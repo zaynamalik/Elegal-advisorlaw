@@ -1,10 +1,5 @@
-// ============================================================
-//  E-Legal Advisor — API Bridge
-//  Replaces localStorage with real Node.js + SQLite backend
-//  Just add <script src="api.js"></script> to your HTML
-// ============================================================
-
-const API_BASE = 'http://localhost:3000/api';
+// Works both locally (localhost:3000) AND on live Railway URL automatically
+const API_BASE = window.location.origin + '/api';
 
 // ── Token Management ─────────────────────────────────────────
 function getToken() { return localStorage.getItem('_jwt_token'); }
@@ -17,38 +12,44 @@ function authHeaders() {
 
 // ── AUTH ─────────────────────────────────────────────────────
 async function apiRegister(fullName, email, password) {
-  const res = await fetch(`${API_BASE}/register`, {
+  const res = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fullName, email, password })
   });
   const data = await res.json();
-  if (data.success) setToken(data.token);
-  return data;
+  if (res.ok && data.token) {
+    setToken(data.token);
+    return { success: true, message: data.message, user: data.user };
+  }
+  return { success: false, message: data.error || 'Registration failed' };
 }
 
 async function apiLogin(email, password) {
-  const res = await fetch(`${API_BASE}/login`, {
+  const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })
   });
   const data = await res.json();
-  if (data.success) setToken(data.token);
-  return data;
+  if (res.ok && data.token) {
+    setToken(data.token);
+    return { success: true, message: data.message, user: data.user };
+  }
+  return { success: false, message: data.error || 'Invalid email or password' };
 }
 
 function apiLogout() { clearToken(); }
 
 async function apiGetMe() {
-  const res = await fetch(`${API_BASE}/me`, { headers: authHeaders() });
+  const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
   return res.json();
 }
 
 // ── CONSULTATIONS ─────────────────────────────────────────────
-async function apiSaveMessage(role, message, topic = null) {
+async function apiSaveMessage(userQuery, aiResponse, topic = 'General') {
   if (!getToken()) return;
   await fetch(`${API_BASE}/consultations`, {
     method: 'POST', headers: authHeaders(),
-    body: JSON.stringify({ role, message, topic })
+    body: JSON.stringify({ userQuery, aiResponse, topic })
   });
 }
 
@@ -56,7 +57,7 @@ async function apiGetHistory() {
   if (!getToken()) return [];
   const res = await fetch(`${API_BASE}/consultations`, { headers: authHeaders() });
   const data = await res.json();
-  return data.data || [];
+  return Array.isArray(data) ? data : [];
 }
 
 async function apiClearHistory() {
@@ -77,7 +78,7 @@ async function apiGetDrafts() {
   if (!getToken()) return [];
   const res = await fetch(`${API_BASE}/fir-drafts`, { headers: authHeaders() });
   const data = await res.json();
-  return data.data || [];
+  return Array.isArray(data) ? data : [];
 }
 
 async function apiDeleteDraft(id) {
@@ -86,11 +87,11 @@ async function apiDeleteDraft(id) {
 }
 
 // ── QUIZ RESULTS ──────────────────────────────────────────────
-async function apiSaveQuizResult(score, total, category = 'General') {
+async function apiSaveQuizResult(score, total, topic = 'All Topics', answersJson = {}) {
   if (!getToken()) return;
   const res = await fetch(`${API_BASE}/quiz-results`, {
     method: 'POST', headers: authHeaders(),
-    body: JSON.stringify({ score, total, category })
+    body: JSON.stringify({ score, total, topic, answersJson })
   });
   return res.json();
 }
@@ -99,24 +100,23 @@ async function apiGetQuizHistory() {
   if (!getToken()) return [];
   const res = await fetch(`${API_BASE}/quiz-results`, { headers: authHeaders() });
   const data = await res.json();
-  return data.data || [];
+  return Array.isArray(data) ? data : [];
 }
 
 // ── RISK ALERTS ───────────────────────────────────────────────
-async function apiSaveRiskAlert(description, riskLevel = 'medium', lawsFlagged = '') {
+async function apiSaveRiskAlert(situation, riskLevel = 'medium', riskDetail = '') {
   if (!getToken()) return;
   await fetch(`${API_BASE}/risk-alerts`, {
     method: 'POST', headers: authHeaders(),
-    body: JSON.stringify({ description, riskLevel, lawsFlagged })
+    body: JSON.stringify({ situation, riskLevel, riskDetail })
   });
 }
 
 // ── STATS ─────────────────────────────────────────────────────
 async function apiGetStats() {
   if (!getToken()) return null;
-  const res = await fetch(`${API_BASE}/stats`, { headers: authHeaders() });
-  const data = await res.json();
-  return data.stats || null;
+  const res = await fetch(`${API_BASE}/admin/stats`, { headers: authHeaders() });
+  return res.json();
 }
 
-console.log('E-Legal Advisor API Bridge loaded. Backend: http://localhost:3000');
+console.log('E-Legal Advisor API Bridge loaded. Backend:', API_BASE);
