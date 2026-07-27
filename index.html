@@ -1453,7 +1453,7 @@
   <div id="authContainer" class="auth-section"></div>
   <div class="footer-note"><i class="fas fa-balance-scale"></i> E-Legal Advisor v5.0 - Pakistan AI Legal Assistant 🇵🇰</div>
 </div>
-
+<script src="api.js"></script>
 <script>
   // ---------- AUTH LOGIC (unchanged) ----------
   const STORAGE_USERS_KEY = "legal_users_v1";
@@ -2521,8 +2521,39 @@
   // AUTH UI RENDER (unchanged)
   function renderSignInForm() { return `<div class="auth-title"><i class="fas fa-key"></i> Sign In to Legal Assistant</div><div class="toggle-buttons"><button class="toggle-btn ${activeFormType==='signin'?'active':''}" data-form="signin">Sign In</button><button class="toggle-btn ${activeFormType==='signup'?'active':''}" data-form="signup">Create Account</button></div><form id="signinForm" class="auth-form"><div class="input-group"><label><i class="fas fa-envelope"></i> EMAIL ADDRESS</label><input type="email" id="signinEmail" placeholder="you@example.com"></div><div class="input-group"><label><i class="fas fa-lock"></i> PASSWORD</label><input type="password" id="signinPassword" placeholder="Min. 4 characters"></div><button type="submit" class="btn-primary"><i class="fas fa-sign-in-alt"></i> Sign In</button><div class="demo-note"><i class="fas fa-info-circle"></i> Demo: demo@example.com / demo123</div></form><div id="dynamicMessage" class="message-area"></div>`; }
   function renderSignUpForm() { return `<div class="auth-title"><i class="fas fa-user-plus"></i> Create Your Account</div><div class="toggle-buttons"><button class="toggle-btn ${activeFormType==='signin'?'active':''}" data-form="signin">Sign In</button><button class="toggle-btn ${activeFormType==='signup'?'active':''}" data-form="signup">Create Account</button></div><form id="signupForm" class="auth-form"><div class="input-group"><label><i class="fas fa-user"></i> FULL NAME</label><input type="text" id="signupFullname" placeholder="Your full name"></div><div class="input-group"><label><i class="fas fa-envelope"></i> EMAIL ADDRESS</label><input type="email" id="signupEmail" placeholder="you@example.com"></div><div class="input-group"><label><i class="fas fa-lock"></i> PASSWORD</label><input type="password" id="signupPassword" placeholder="Min. 4 characters"></div><div class="input-group"><label><i class="fas fa-check-circle"></i> CONFIRM PASSWORD</label><input type="password" id="signupConfirm" placeholder="Repeat password"></div><button type="submit" class="btn-primary"><i class="fas fa-user-check"></i> Register & Sign In</button></form><div id="dynamicMessage" class="message-area"></div>`; }
-  function attachSignInEvents() { const form = document.getElementById("signinForm"); if(form) form.addEventListener("submit",(e)=>{ e.preventDefault(); const email=document.getElementById("signinEmail").value.trim(); const password=document.getElementById("signinPassword").value; const res=signInUser(email,password); if(res.success){ setCurrentUser({fullName:res.user.fullName,email:res.user.email}); showMessage(res.message,"success","dynamicMessage"); renderAuthByState(); } else showMessage(res.message,"error","dynamicMessage"); }); }
-  function attachSignUpEvents() { const form = document.getElementById("signupForm"); if(form) form.addEventListener("submit",(e)=>{ e.preventDefault(); const fullName=document.getElementById("signupFullname").value.trim(); const email=document.getElementById("signupEmail").value.trim(); const pwd=document.getElementById("signupPassword").value; const confirm=document.getElementById("signupConfirm").value; const reg=registerUser(fullName,email,pwd,confirm); if(reg.success){ setCurrentUser({fullName:reg.user.fullName,email:reg.user.email}); showMessage(reg.message,"success","dynamicMessage"); renderAuthByState(); } else showMessage(reg.message,"error","dynamicMessage"); }); }
+  function attachSignInEvents() {
+  const form = document.getElementById("signinForm");
+  if (form) form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("signinEmail").value.trim();
+    const password = document.getElementById("signinPassword").value;
+    const res = await apiLogin(email, password);
+    if (res.success) {
+      setCurrentUser({ fullName: res.user.fullName, email: res.user.email });
+      showMessage(res.message, "success", "dynamicMessage");
+      renderAuthByState();
+    } else {
+      showMessage(res.message, "error", "dynamicMessage");
+    }
+  });
+}
+  function attachSignUpEvents() {
+  const form = document.getElementById("signupForm");
+  if (form) form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById("signupFullname").value.trim();
+    const email = document.getElementById("signupEmail").value.trim();
+    const pwd = document.getElementById("signupPassword").value;
+    const res = await apiRegister(fullName, email, pwd);
+    if (res.success) {
+      setCurrentUser({ fullName: res.user.fullName, email: res.user.email });
+      showMessage(res.message, "success", "dynamicMessage");
+      renderAuthByState();
+    } else {
+      showMessage(res.message, "error", "dynamicMessage");
+    }
+  });
+}
   function attachToggleEvents() { document.querySelectorAll(".toggle-btn").forEach(btn=>{ btn.addEventListener("click",()=>{ activeFormType=btn.getAttribute("data-form"); renderAuthByState(); }); }); }
   function renderAuthByState() { const user = getCurrentUser(); if (user) { introBoxesDiv.classList.add("hidden"); currentView = 'home'; renderDashboardFull(user); } else { introBoxesDiv.classList.remove("hidden"); if (activeFormType === "signin") { authContainer.innerHTML = renderSignInForm(); attachSignInEvents(); } else { authContainer.innerHTML = renderSignUpForm(); attachSignUpEvents(); } attachToggleEvents(); } }
   function initializeDemoUserConsistency() { const users = loadUsers(); if(!users.some(u=>u.email==="demo@example.com")) users.push({ fullName: "Demo User", email: "demo@example.com", password: "demo123" }); saveUsers(users); }
